@@ -8,7 +8,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
-import { Menu, X, ArrowUpRight, Github } from "lucide-react";
+import { Menu, X, ArrowUpRight, Github, Star } from "lucide-react";
 import { getBackendConfig, isJsonApiResponse } from "../config/backendConfig";
 import { getGitHubConfig } from "../config/productConfig";
 
@@ -26,7 +26,7 @@ export const MarketingLayout: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [ghData, setGhData] = useState<GitHubRepoTelemetry | null>(null);
   const location = useLocation();
-  const ghConfig = getGitHubConfig();
+  const { repoSlug, repoUrl } = getGitHubConfig();
 
   // Scroll to top on route change
   useEffect(() => {
@@ -38,22 +38,53 @@ export const MarketingLayout: React.FC = () => {
 
   useEffect(() => {
     const backend = getBackendConfig();
-    if (backend.isStaticOnlyDeployment) return;
-    let active = true;
-    fetch(backend.githubRepoMetadataUrl, {
-      headers: { Accept: "application/json" },
-    })
-      .then((r) => (r.ok && isJsonApiResponse(r) ? r.json() : null))
-      .then((data) => {
-        if (active && data) {
-          setGhData(data);
-        }
-      })
-      .catch(() => {});
-    return () => {
-      active = false;
-    };
-  }, []);
+    const controller = new AbortController();
+    const { signal } = controller;
+
+    async function loadGitHubTelemetry() {
+      let metadata: GitHubRepoTelemetry | null = null;
+      if (!backend.isStaticOnlyDeployment) {
+        metadata = await fetch(backend.githubRepoMetadataUrl, {
+          headers: { Accept: "application/json" },
+          signal,
+        })
+          .then((response) => (isJsonApiResponse(response) ? response.json() : null))
+          .catch(() => null);
+      }
+
+      if (signal.aborted) return;
+      if (metadata?.configured) {
+        setGhData(metadata);
+        if (metadata.status === "live" && typeof metadata.stars === "number") return;
+      }
+
+      const repo = metadata?.repo ?? repoSlug;
+      const url = metadata?.url ?? repoUrl;
+      if (!repo || !url) return;
+
+      const response = await fetch(`https://api.github.com/repos/${repo}`, {
+        headers: { Accept: "application/vnd.github+json" },
+        signal,
+      });
+      if (!response.ok) return;
+
+      const data = await response.json();
+      if (signal.aborted || typeof data?.stargazers_count !== "number") return;
+
+      setGhData({
+        configured: true,
+        repo,
+        url,
+        stars: data.stargazers_count,
+        forks: typeof data.forks_count === "number" ? data.forks_count : null,
+        openIssues: typeof data.open_issues_count === "number" ? data.open_issues_count : null,
+        status: "live",
+      });
+    }
+
+    void loadGitHubTelemetry().catch(() => {});
+    return () => controller.abort();
+  }, [repoSlug, repoUrl]);
 
   const navItems = [
     { label: "Features", to: "/features" },
@@ -71,8 +102,31 @@ export const MarketingLayout: React.FC = () => {
   const isEditorial = ["/", "/features", "/docs", "/open-source"].includes(
     location.pathname,
   );
-  const githubHref = ghData?.url || ghConfig.repoUrl || "/open-source";
+  const githubHref = ghData?.url || repoUrl || "/open-source";
   const isExternalGh = githubHref.startsWith("http");
+  const githubButtonClass = "btn-pill px-3 py-1.5 max-md:min-h-11 rounded-full border border-zinc-200 bg-white hover:bg-zinc-50 hover:border-zinc-300 text-xs font-medium text-zinc-700 transition-colors whitespace-nowrap";
+  const githubButtonContent = (
+    <>
+      <Github aria-hidden="true" className="w-3.5 h-3.5" />
+      <span>GitHub</span>
+      {liveStars !== null && (
+        <span className="inline-flex items-center gap-1 tabular-nums text-zinc-600">
+          <Star aria-hidden="true" className="w-3 h-3" />
+          {liveStars.toLocaleString()}
+          <span className="sr-only"> {liveStars === 1 ? "star" : "stars"}</span>
+        </span>
+      )}
+    </>
+  );
+  const githubButton = isExternalGh ? (
+    <a href={githubHref} target="_blank" rel="noopener noreferrer" className={githubButtonClass}>
+      {githubButtonContent}
+    </a>
+  ) : (
+    <Link to="/open-source" className={githubButtonClass}>
+      {githubButtonContent}
+    </Link>
+  );
   const outletContext = { ghData };
 
   return (
@@ -132,30 +186,7 @@ export const MarketingLayout: React.FC = () => {
 
           {/* Right: GitHub Star, Sign in, Start Visualizing */}
           <div className="hidden md:flex items-center gap-3 shrink-0">
-            {isExternalGh ? (
-              <a
-                href={githubHref}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn-pill px-3 py-1.5 rounded-full border border-zinc-200 bg-white hover:bg-zinc-50 hover:border-zinc-300 text-xs font-medium text-zinc-700 transition-colors whitespace-nowrap"
-              >
-                <Github className="w-3.5 h-3.5 text-zinc-700" />
-                <span>GitHub</span>
-                {liveStars !== null && (
-                  <span className="font-mono tabular-nums text-zinc-500 pl-1 border-l border-zinc-200">
-                    {liveStars.toLocaleString()}
-                  </span>
-                )}
-              </a>
-            ) : (
-              <Link
-                to="/open-source"
-                className="btn-pill px-3 py-1.5 rounded-full border border-zinc-200 bg-white hover:bg-zinc-50 hover:border-zinc-300 text-xs font-medium text-zinc-700 transition-colors whitespace-nowrap"
-              >
-                <Github className="w-3.5 h-3.5 text-zinc-700" />
-                <span>GitHub</span>
-              </Link>
-            )}
+            {githubButton}
 
             <Link
               to="/studio"
@@ -219,6 +250,7 @@ export const MarketingLayout: React.FC = () => {
             </nav>
 
             <div className="pt-3 border-t border-zinc-200 flex flex-col gap-2">
+              {githubButton}
               <Link
                 to="/studio"
                 className="btn-pill w-full py-2.5 rounded-full bg-blue-600 text-white text-sm font-medium text-center"

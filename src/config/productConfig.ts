@@ -223,7 +223,7 @@ export interface GitHubConfigState {
 const rawEnvRepo =
   (typeof import.meta !== "undefined" &&
     (import.meta as any).env?.VITE_GITHUB_REPO) ||
-  "";
+  "jothivasan/Parallax";
 
 export function getGitHubConfig(): GitHubConfigState {
   const cleaned = String(rawEnvRepo)
