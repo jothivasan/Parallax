@@ -1,0 +1,55 @@
+.po-wrap { width: min(1136px, 88%); margin-inline: auto; }
+.po-page h1, .po-page h2 {
+  font-family: var(--display);
+  font-weight: 400;
+  letter-spacing: -.035em;
+  line-height: .99;
+}
+.po-page h1 { font-size: clamp(4.15rem, 8.5vw, 7.3rem); }
+.po-page h2 { font-size: clamp(2.6rem, 5vw, 4.6rem); }
+.po-page em { color: var(--copper); }
+.po-page p { color: var(--muted); line-height: 1.6; max-width: 46ch; margin-block: 19px; }
+.po-hero { background: radial-gradient(ellipse at 79% 70%, #f4dec9, transparent 68%); border-bottom: 1px solid var(--line); }
+.po-hero .po-wrap { padding-block: clamp(65px, 10vw, 145px); }
+.po-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 7%; align-items: center; }
+.po-hero p { font-size: 1.08rem; margin-block: 24px; }
+.po-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.po-tree, .po-command { border-radius: 12px; overflow: hidden; min-width: 0; background: #fffef9; }
+.po-tree { box-shadow: 0 20px 45px -24px #6f4b39a6; animation: po-enter .7s cubic-bezier(.16,1,.3,1) both; }
+@keyframes po-enter { from { opacity: .65; transform: translateY(10px); } }
+.po-tree figcaption, .po-command figcaption { display: flex; align-items: center; gap: 10px; padding: 12px 17px; background: var(--ink); color: #fffef9; font-size: .9rem; font-weight: 600; }
+.po-tree figcaption span { overflow-wrap: anywhere; }
+.po-branches { padding: 8px 18px; }
+.po-branches a, .po-areas > a { display: flex; align-items: center; gap: 12px; padding-block: 13px; }
+.po-branches a + a, .po-areas > a + a { border-top: 1px solid var(--line); }
+.po-branches svg, .po-areas svg { flex-shrink: 0; color: var(--copper); }
+.po-branches svg:last-child, .po-areas > a svg { margin-inline-start: auto; }
+.po-branches code { font-size: .83rem; overflow-wrap: anywhere; }
+.po-page small { display: block; color: var(--muted); font-size: .85rem; line-height: 1.5; }
+.po-branches a:hover code, .po-areas a:hover strong, .po-text-link:hover { text-decoration: underline; text-underline-offset: .24em; }
+.po-stats { display: flex; gap: 22px; flex-wrap: wrap; border-top: 1px solid var(--line); margin: 0; padding: 13px 18px; font-size: .8rem; }
+.po-stats dd { font-family: var(--font-mono); }
+.po-section { padding-block: clamp(48px, 7vw, 95px); }
+.po-page section[id] { scroll-margin-top: var(--header-height); }
+.po-command { border: 1px solid var(--line); }
+.po-command figcaption { padding-block: 5px; justify-content: space-between; }
+.po-command figcaption span, .po-command button, .po-text-link { display: inline-flex; align-items: center; gap: 8px; }
+.po-command button { min-height: 44px; min-width: 78px; justify-content: center; border-radius: 4px; }
+.po-command button:hover { background: #365149; }
+.po-command pre { overflow: auto; padding: 17px; font-size: .85rem; line-height: 1.75; }
+.po-copy-error { display: block; padding: 0 17px 12px; color: #793e29; font-size: .8rem; }
+.po-text-link { min-height: 44px; font-weight: 600; font-size: .9rem; }
+.po-page p a { text-decoration: underline; text-underline-offset: .2em; }
+.po-contribute { background: #edf0e8; border-block: 1px solid var(--line); }
+.po-contribute .po-split { align-items: start; }
+.po-areas figure { margin-top: 15px; }
+.po-license { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; }
+@media (max-width: 720px) {
+  .po-wrap { width: 90%; }
+  .po-split { grid-template-columns: minmax(0, 1fr); gap: 28px; }
+  .po-tree figcaption, .po-command figcaption { padding-inline: 12px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .po-tree { animation: none; }
+  .po-page a { transition: none; }
+}

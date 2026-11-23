@@ -1,0 +1,106 @@
+@theme inline {
+  --color-memory-panel: var(--studio-panel, #fcfcf7);
+  --color-memory-surface: var(--studio-paper, #f8f8f1);
+  --color-memory-inset: var(--studio-inset, #eff1e9);
+  --color-memory-line: var(--studio-line, #cfd5ca);
+  --color-memory-line-strong: #aebcb0;
+  --color-memory-ink: var(--studio-ink, #203632);
+  --color-memory-muted: var(--studio-muted, #52625d);
+  --color-memory-reference: #315e64;
+  --color-memory-reference-line: #9db7b6;
+  --color-memory-reference-soft: #e7eeeb;
+  --color-memory-active: #345f49;
+  --color-memory-active-line: #a1b9a5;
+  --color-memory-active-soft: #e8efe5;
+  --color-memory-lifecycle: var(--studio-accent-ink, #843b25);
+  --color-memory-lifecycle-line: #d3ac98;
+  --color-memory-lifecycle-soft: var(--studio-tint, #f6e8de);
+  --color-memory-danger: var(--studio-error, #9d3538);
+  --color-memory-danger-line: #cda2a0;
+  --color-memory-danger-soft: #f7e8e4;
+  --color-memory-type: #624779;
+  --color-memory-type-line: #c4b8cb;
+  --color-memory-type-soft: #eee9f0;
+}
+
+.runtime-memory {
+  container: runtime-memory / inline-size;
+  min-width: 0;
+  border: 1px solid var(--studio-line, #cfd5ca);
+  border-radius: 8px;
+  color: var(--studio-ink, #203632);
+  background: var(--studio-panel, #fcfcf7);
+  overflow-wrap: anywhere;
+}
+.runtime-memory-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 7px;
+  padding: 12px 13px 8px;
+  border-bottom: 1px solid var(--studio-line, #cfd5ca);
+  background: var(--studio-paper, #f8f8f1);
+  border-radius: 8px 8px 0 0;
+}
+.runtime-memory-header h3 {
+  display: flex;
+  align-items: start;
+  gap: 7px;
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: -.012em;
+  text-wrap: initial;
+}
+.runtime-memory-header h3 svg { flex: none; margin-top: 2px; color: var(--studio-accent-ink, #843b25); }
+.runtime-memory-context { display: flex; flex-wrap: wrap; align-items: baseline; gap: 5px 10px; }
+.runtime-memory-model { color: var(--studio-muted, #52625d); font-size: 12px; }
+.runtime-memory-event {
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--studio-accent-ink, #843b25);
+  background: var(--studio-tint, #f6e8de);
+  font: 11px var(--font-mono);
+}
+.runtime-memory-views { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+.runtime-memory-views button {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  min-height: 30px;
+  padding: 4px 7px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  color: var(--studio-muted, #52625d);
+  font: 600 12px/1.4 var(--font-sans);
+  cursor: pointer;
+  transition: background 140ms;
+}
+.runtime-memory-views button:hover { background: var(--studio-inset, #eff1e9); }
+.runtime-memory-views button[aria-pressed="true"] {
+  color: var(--studio-accent-ink, #843b25);
+  border-color: color-mix(in srgb, var(--studio-copper, #ac5132) 25%, transparent);
+  background: var(--studio-tint, #f6e8de);
+}
+.runtime-memory-count { font: 11px var(--font-mono); }
+.runtime-memory-content { min-width: 0; padding: 12px; display: grid; gap: 12px; }
+.runtime-memory-content > *, .runtime-memory-content .grid > * { min-width: 0; }
+.memory-heap-objects { align-content: start; }
+.memory-heap-objects > :only-child { grid-column: 1 / -1; }
+.memory-grid-two, .memory-grid-three, .memory-heap-layout { grid-template-columns: minmax(0, 1fr); }
+
+@container runtime-memory (min-width: 33rem) {
+  .memory-grid-two, .memory-grid-three { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@container runtime-memory (min-width: 47rem) {
+  .memory-grid-three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .memory-heap-layout { grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr); }
+}
+@container runtime-memory (max-width: 28rem) {
+  .runtime-memory-header { padding-inline: 9px; }
+  .runtime-memory-content { padding: 8px; }
+  .runtime-memory-views { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; padding-bottom: 3px; }
+  .runtime-memory-views button { flex: none; min-height: 34px; white-space: nowrap; }
+  .runtime-memory-views button:focus-visible { outline-offset: -2px; }
+}
+
+.runtime-memory-details { container: runtime-memory / inline-size; min-width: 0; overflow-wrap: anywhere; }
+.runtime-memory-details > .runtime-memory-content { padding: 0; }

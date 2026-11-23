@@ -1,0 +1,6 @@
+{
+  "name": "Parallax - Multi-Language Execution Tracer & Architecture",
+  "description": "Parallax — See your program from every angle. Multi-language code execution tracer, memory model inspector, deterministic time-travel debugger, and automatic DSA pattern visualizer.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

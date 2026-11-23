@@ -1,0 +1,60 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+.bun/
+
+# Production Build Output
+dist/
+build/
+server.js
+.vercel/
+.netlify/
+*.tsbuildinfo
+
+# Test & Coverage
+coverage/
+*.lcov
+
+# Environment & Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+.aws/
+
+# Logs & Temporary Files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+/tmp/
+/test_vp.png
+
+# OS & Editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# Tool Caches
+.vite/
+.eslintcache
+
+# Local agent skills, design tooling, and generated skill assets
+/.agents/
+/.codex/
+/.cursor/
+/.claude/
+/.impeccable/
+/.taste-skill/
+/.github/agents/
+skills/
+SKILL.md
+skills-lock.json

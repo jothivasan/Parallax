@@ -1,0 +1,35 @@
+name: Feature Request
+description: Propose a new language feature, visualizer, or curriculum lesson
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for suggesting an improvement for Parallax!
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or Motivation
+      description: What pedagogical challenge or developer need does this address?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed Solution
+      description: Describe the proposed visualizer, runtime enhancement, or feature.
+    validations:
+      required: true
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      options:
+        - Structural Visualizer (Trees, Graphs, Pointers)
+        - Language Runtime / Compiler Support
+        - DSA Curriculum Lesson (/learn)
+        - Coding Challenge (/challenges)
+        - Developer Experience / Tooling
+    validations:
+      required: true
