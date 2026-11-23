@@ -13,6 +13,7 @@ cp .env.example .env
 ```
 
 All environment variables have sensible defaults; no external database, cloud service, or API key is required.
+Parallax works without user accounts or Supabase. Learning progress and saved snippets are stored in the browser.
 
 ---
 
@@ -36,8 +37,7 @@ These variables configure client-side behavior, endpoint resolution, and deploym
 | `VITE_DEPLOYMENT_MODE`             | String  | `auto`  | Deployment mode selector: `auto` (detect), `static` (pure client), or `hybrid` (client + remote backend).   |
 | `VITE_NATIVE_EXECUTION_SERVER_URL` | String  | `""`    | Base URL of the remote Native Execution Server when running in hybrid mode (e.g. `https://api.dryrun.dev`). |
 | `VITE_BACKEND_URL`                 | String  | `""`    | Fallback backend URL alias.                                                                                 |
-| `VITE_GITHUB_REPO`                 | String  | `""`    | GitHub repository slug (e.g. `dry-run/dry-run`) used for documentation and header links.                    |
-| `VITE_AUTH_PROVIDER_CONFIGURED`    | Boolean | `false` | When `true`, enables cloud login options. Defaults to `false` (Local-First mode).                           |
+| `VITE_GITHUB_REPO`                 | String  | `jothivasan/Parallax` | GitHub repository slug used for repository links and public star counts.                 |
 | `VITE_INTERNAL_ACCESS_KEY`         | String  | `""`    | Optional access key to protect maintainer console views under `/internal/*`.                                |
 
 ---

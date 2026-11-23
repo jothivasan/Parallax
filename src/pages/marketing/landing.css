@@ -414,13 +414,6 @@
   [data-Parallax-editorial] > header nav {
     gap: 12px;
   }
-  [data-Parallax-editorial]
-    > header
-    .hidden.md\:flex
-    > a[href="/open-source"].btn-pill,
-  [data-Parallax-editorial] > header a[target="_blank"].btn-pill {
-    display: none;
-  }
   [data-Parallax-editorial] > header > div:first-child {
     width: 95%;
     gap: 10px;
