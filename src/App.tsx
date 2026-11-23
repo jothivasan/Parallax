@@ -10,7 +10,6 @@ import { StudioPreferencesProvider } from './core/settings/studioPreferencesStor
 // Layouts
 import { MarketingLayout } from './layouts/MarketingLayout';
 import { StudioLayout } from './layouts/StudioLayout';
-import { InternalLayout } from './layouts/InternalLayout';
 
 // Public Marketing Pages (Always Light Theme)
 import { HomePage } from './pages/marketing/HomePage';
@@ -23,13 +22,6 @@ import { StudioPage } from './pages/studio/StudioPage';
 import { LearningPathPage } from './pages/studio/LearningPathPage';
 import { ChallengesPage } from './pages/studio/ChallengesPage';
 import { SettingsPage } from './pages/studio/SettingsPage';
-
-// Protected Internal Developer & Operations Pages (/internal/*)
-import {
-  InternalArchitecturePage,
-  InternalSecurityPage,
-  InternalOperationsPage,
-} from './pages/internal/InternalPages';
 
 import { NotFoundPage } from './pages/NotFoundPage';
 
@@ -66,14 +58,6 @@ export default function App() {
         <Route path="/learn" element={<LearningPathPage />} />
         <Route path="/challenges" element={<ChallengesPage />} />
         <Route path="/settings" element={<SettingsPage />} />
-      </Route>
-
-      {/* C. Internal Maintainer, Architecture & Operations Tools */}
-      <Route path="/internal" element={<InternalLayout />}>
-        <Route index element={<Navigate to="/internal/architecture" replace />} />
-        <Route path="architecture" element={<InternalArchitecturePage />} />
-        <Route path="security" element={<InternalSecurityPage />} />
-        <Route path="operations" element={<InternalOperationsPage />} />
       </Route>
     </Routes>
   );

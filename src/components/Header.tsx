@@ -4,14 +4,9 @@
  */
 
 import React from "react";
-import { Play, ArrowUpRight } from "lucide-react";
+import { Play } from "lucide-react";
 
-export type AppNavTab =
-  | "studio"
-  | "learning_path"
-  | "challenges"
-  | "audit"
-  | "security_lab";
+export type AppNavTab = "studio" | "learning_path" | "challenges";
 
 interface HeaderProps {
   activeTab: AppNavTab;
@@ -24,19 +19,6 @@ export const Header: React.FC<HeaderProps> = ({
   onSelectTab,
   onTriggerRun,
 }) => {
-  const isStudioFamily =
-    activeTab === "studio" ||
-    activeTab === "learning_path" ||
-    activeTab === "challenges";
-
-  const handleActionClick = () => {
-    if (!isStudioFamily) {
-      onSelectTab("studio");
-    } else if (onTriggerRun) {
-      onTriggerRun();
-    }
-  };
-
   return (
     <header className="h-14 border-b border-[#dbe0e8] bg-[#ffffff]/95 backdrop-blur-md sticky top-0 z-30 px-3 sm:px-6">
       <div className="max-w-[1440px] h-full mx-auto flex items-center justify-between gap-2 sm:gap-4">
@@ -104,58 +86,17 @@ export const Header: React.FC<HeaderProps> = ({
               <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#1f2de6]" />
             )}
           </button>
-
-          <button
-            type="button"
-            onClick={() => onSelectTab("audit")}
-            className={`relative h-full px-1.5 sm:px-2 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap shrink-0 flex items-center ${
-              activeTab === "audit"
-                ? "text-[#1f2de6] font-semibold"
-                : "text-[#5d6470] hover:text-[#0b0c0e]"
-            }`}
-          >
-            <span className="sm:hidden">Audit</span>
-            <span className="hidden sm:inline">Architecture Review</span>
-            {activeTab === "audit" && (
-              <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#1f2de6]" />
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onSelectTab("security_lab")}
-            className={`relative h-full px-1.5 sm:px-2 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap shrink-0 flex items-center ${
-              activeTab === "security_lab"
-                ? "text-[#1f2de6] font-semibold"
-                : "text-[#5d6470] hover:text-[#0b0c0e]"
-            }`}
-          >
-            <span className="sm:hidden">Security</span>
-            <span className="hidden sm:inline">Security Sandbox</span>
-            {activeTab === "security_lab" && (
-              <span className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#1f2de6]" />
-            )}
-          </button>
         </nav>
 
         {/* Zone 3: Single Primary Action */}
         <button
           type="button"
-          onClick={handleActionClick}
+          onClick={onTriggerRun}
           className="btn-pill px-3.5 sm:px-4 py-1.5 rounded-full bg-[#1f2de6] hover:bg-[#1622b8] text-[#ffffff] font-semibold text-xs whitespace-nowrap shrink-0 shadow-xs"
         >
-          {isStudioFamily ? (
-            <>
-              <Play className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-current" />
-              <span className="sm:hidden">Run</span>
-              <span className="hidden sm:inline">Execute Trace</span>
-            </>
-          ) : (
-            <>
-              <span>Studio</span>
-              <ArrowUpRight className="w-3.5 h-3.5" />
-            </>
-          )}
+          <Play className="w-3 h-3 sm:w-3.5 sm:h-3.5 fill-current" />
+          <span className="sm:hidden">Run</span>
+          <span className="hidden sm:inline">Execute Trace</span>
         </button>
       </div>
     </header>

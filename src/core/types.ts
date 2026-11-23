@@ -1069,14 +1069,3 @@ export interface SecurityPolicy {
   allowFileSystem: false;
   allowSubprocesses: false;
 }
-
-export interface ArchitectureReviewCategory {
-  id: number;
-  title: string;
-  focusArea: string;
-  evaluation: 'PASSED' | 'ARCHITECTED' | 'ISOLATED' | 'HARDENED';
-  verdict: string;
-  details: string[];
-  identifiedRisks: string[];
-  remediesImplemented: string[];
-}

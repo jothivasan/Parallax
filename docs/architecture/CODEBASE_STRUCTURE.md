@@ -22,8 +22,6 @@ This document details the source tree layout, module responsibilities, and archi
 │   │
 │   ├── components/            # UI components and feature views
 │   │   ├── Header.tsx         # Universal application navigation header
-│   │   ├── SecurityLab.tsx    # Maintainer security & boundary verification view
-│   │   ├── ArchitectureAuditView.tsx # Live runtime architecture review view
 │   │   └── studio/            # 3-Panel Studio debugger & visualizers
 │   │       ├── CodeMirrorEditor.tsx        # CodeMirror 6 editor wrapper
 │   │       ├── DryRunStudio.tsx            # Main interactive execution studio container
@@ -44,7 +42,6 @@ This document details the source tree layout, module responsibilities, and archi
 │   │
 │   ├── core/                  # Core execution engine, tracers, and intelligence
 │   │   ├── types.ts           # Canonical ExecutionTrace, TraceEvent & MemoryValue types
-│   │   ├── architectureReport.ts # In-memory architecture review report generator
 │   │   │
 │   │   ├── execution/         # Dual-mode execution engine
 │   │   │   ├── contracts.ts              # UnifiedExecutionAdapter & mode resolution types
@@ -95,8 +92,8 @@ This document details the source tree layout, module responsibilities, and archi
 │   │       ├── traceComparator.ts
 │   │       └── memoryModelFixtures.ts
 │   │
-│   ├── layouts/               # Page layouts (MarketingLayout, StudioLayout, InternalLayout)
-│   ├── pages/                 # Route pages (marketing, studio, auth, internal)
+│   ├── layouts/               # Page layouts (MarketingLayout, StudioLayout)
+│   ├── pages/                 # Route pages (marketing, studio, not found)
 │   ├── server/                # Server-only execution coordinator & secret challenge vault
 │   │   ├── executionCoordinator.ts # Rate limiting, queueing, and process spawning
 │   │   └── challengeVault.ts       # Protected hidden test cases for challenges

@@ -38,7 +38,6 @@ These variables configure client-side behavior, endpoint resolution, and deploym
 | `VITE_NATIVE_EXECUTION_SERVER_URL` | String  | `""`    | Base URL of the remote Native Execution Server when running in hybrid mode (e.g. `https://api.dryrun.dev`). |
 | `VITE_BACKEND_URL`                 | String  | `""`    | Fallback backend URL alias.                                                                                 |
 | `VITE_GITHUB_REPO`                 | String  | `jothivasan/Parallax` | GitHub repository slug used for repository links and public star counts.                 |
-| `VITE_INTERNAL_ACCESS_KEY`         | String  | `""`    | Optional access key to protect maintainer console views under `/internal/*`.                                |
 
 ---
 
