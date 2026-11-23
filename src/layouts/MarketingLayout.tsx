@@ -396,14 +396,6 @@ export const MarketingLayout: React.FC = () => {
                   </Link>
                 </li>
                 <li>
-                  <Link
-                    to="/open-source"
-                    className="hover:text-blue-600 transition-colors"
-                  >
-                    Architecture Audit
-                  </Link>
-                </li>
-                <li>
                   <span className="text-zinc-500">
                     Source files carry SPDX headers
                   </span>

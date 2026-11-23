@@ -3,9 +3,7 @@
  */
 
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
 import {
-  ArrowUpRight,
   Check,
   Code2,
   Database,
@@ -389,12 +387,6 @@ export const SettingsPage: React.FC = () => {
               >
                 <Download size={16} aria-hidden="true" /> Export backup
               </button>
-              <Link
-                to="/internal/architecture"
-                className="practice-text-button"
-              >
-                Maintainer console <ArrowUpRight size={15} aria-hidden="true" />
-              </Link>
             </div>
 
             <details className="settings-disclosure">
