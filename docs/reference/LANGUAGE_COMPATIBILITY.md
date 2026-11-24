@@ -109,7 +109,23 @@ flowchart TD
 
 ---
 
-## 4. Related Documentation
+## 4. Structure Canvas coverage
+
+The canvas reads a selected trace step in either execution mode. A basic drawing needs captured values. An operation highlight also needs evidence such as an indexed access, collection operation, reference edge, call, or return. The following probes exercised the capture and drawing paths together.
+
+| Language | Browser probe | Native probe | Operation detail |
+| --- | --- | --- | --- |
+| JavaScript | Map with distinct numeric and string keys | Same map | Indexed string reads, map/set methods, array changes and direct indexed dependencies |
+| TypeScript | Typed Map | Same map | Shares the JS instrumentation after type erasure |
+| Python | Dictionary with distinct integer and string keys | Same dictionary | String subscripts use Python code-point indexing. Lists, tuples, sets, and dictionary entries use captured snapshots |
+| C17 | Array with three integer cells | Same array | Indexed and pointer operations where the instrumentor emits them. User-built structures require captured fields and references |
+| C++20 | Vector with three integer cells | Same vector | Uses recorded STL elements, entries, logical endpoints, and available array and lifecycle operations |
+| Java | Integer array in the educational browser subset | Requires a host JDK. Native probe unavailable on the verification host | Uses recorded collection metadata and array operations |
+| C# | Integer array in the educational browser subset | Requires a host .NET SDK. Native probe unavailable on the verification host | Uses recorded collection metadata and array operations |
+
+Tree and graph layouts use captured references or explicitly selected adjacency representations. Recursive layouts use invocation history. Detailed BFS/DFS frontier transitions and direct DP write dependencies are currently captured most fully on the JavaScript/TypeScript path. Other adapters can draw a table or frontier from its captured contents even when they cannot identify the exact operation. Older traces can omit these optional observations.
+
+## 5. Related Documentation
 
 - [System Overview](../architecture/SYSTEM_OVERVIEW.md)
 - [Execution Architecture](../architecture/EXECUTION_ARCHITECTURE.md)

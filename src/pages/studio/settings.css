@@ -324,3 +324,11 @@
     padding-bottom: 20px;
   }
 }
+
+.settings-tool-group { margin: 18px 0; padding: 0; border: 0; }
+.settings-tool-group legend { font-weight: 650; margin-bottom: 7px; }
+.settings-tool-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 245px), 1fr)); gap: 0 24px; }
+.settings-tool-grid label { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-top: 1px solid var(--studio-line); cursor: pointer; }
+.settings-tool-grid input { margin-top: 4px; accent-color: var(--studio-accent-ink); }
+.settings-tool-grid strong, .settings-tool-grid small { display: block; }
+.settings-tool-grid small { margin-top: 3px; color: var(--studio-muted); line-height: 1.4; }

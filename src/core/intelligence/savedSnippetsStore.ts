@@ -9,6 +9,7 @@
  * Never automatically transmits user code to any remote storage server.
  */
 
+import { readConfig } from '../visualization/config';
 import { LanguageId, SavedCodeSnippet } from '../types';
 import {
   MemoryStorageAdapter,
@@ -59,6 +60,7 @@ export class SavedSnippetsStore {
     title: string;
     language: LanguageId;
     code: string;
+    visualizer?: SavedCodeSnippet['visualizer'];
     customInput?: string;
     topicId?: string;
     challengeId?: string;
@@ -73,6 +75,7 @@ export class SavedSnippetsStore {
       language: params.language,
       code: params.code,
       customInput: params.customInput,
+      visualizer: params.visualizer,
       topicId: params.topicId,
       challengeId: params.challengeId,
       categoryTag:
@@ -178,6 +181,7 @@ export class SavedSnippetsStore {
           title: item.title.trim() || 'Imported Snippet',
           language: item.language as LanguageId,
           code: item.code,
+          visualizer: item.visualizer ? readConfig(item.visualizer) : undefined,
           customInput:
             typeof item.customInput === 'string' ? item.customInput : undefined,
           topicId: typeof item.topicId === 'string' ? item.topicId : undefined,

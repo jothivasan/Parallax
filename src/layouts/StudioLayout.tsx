@@ -110,22 +110,20 @@ export const StudioLayout: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            {!isStudio && (
-              <NavLink
-                to="/settings"
-                aria-label="Settings"
-                title="Studio Settings & Preferences"
-                className={({ isActive }) =>
-                  `btn-tactile p-2 rounded-full border transition-colors ${
-                    isActive
-                      ? "border-blue-600 text-blue-600 bg-blue-50"
-                      : "border-zinc-200 bg-white text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50"
-                  }`
-                }
-              >
-                <Settings className="w-4 h-4" />
-              </NavLink>
-            )}
+            <NavLink
+              to="/settings"
+              aria-label="Settings"
+              title="Studio Settings & Preferences"
+              className={({ isActive }) =>
+                `btn-tactile p-2 rounded-full border transition-colors ${
+                  isActive
+                    ? "border-blue-600 text-blue-600 bg-blue-50"
+                    : "border-zinc-200 bg-white text-zinc-600 hover:text-zinc-900 hover:bg-zinc-50"
+                }`
+              }
+            >
+              <Settings className="w-4 h-4" />
+            </NavLink>
 
             {!isStudio && (
               <Link

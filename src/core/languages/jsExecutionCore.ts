@@ -478,6 +478,17 @@ export function createDryRunInstrumentationPlugin(sourceCode: string) {
               const idxVar = extractIndexIdentifier(t, left.property);
               const idxVarArg = idxVar ? t.stringLiteral(idxVar) : t.identifier('undefined');
 
+              // Only unconditional indexed operands can prove a dependency on this write.
+              const sites: any[] = [];
+              function collectOperands(node: any): boolean {
+                if (t.isBinaryExpression(node)) return collectOperands(node.left) && collectOperands(node.right);
+                if (t.isIdentifier(node) || t.isNumericLiteral(node)) return true;
+                if (!t.isMemberExpression(node) || !node.computed || !t.isIdentifier(node.object)) return false;
+                const site = getLoc(node);
+                sites.push(markInstrumented(t.arrayExpression([t.numericLiteral(site.line), t.numericLiteral(site.col)])));
+                return true;
+              }
+              const operandSites = collectOperands(right) ? sites : [];
               path.replaceWith(
                 makeDrCall(
                   'setIdx',
@@ -491,6 +502,7 @@ export function createDryRunInstrumentationPlugin(sourceCode: string) {
                     t.numericLiteral(line),
                     t.numericLiteral(col),
                     idxVarArg,
+                    markInstrumented(t.arrayExpression(operandSites)),
                   ],
                   path.node
                 )
@@ -666,6 +678,7 @@ export function createDryRunInstrumentationPlugin(sourceCode: string) {
                 t.numericLiteral(line),
                 t.numericLiteral(col),
                 idxVarArg,
+                t.booleanLiteral(t.isIdentifier(path.node.property)),
               ],
               path.node
             )

@@ -11,9 +11,12 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { LanguageId } from "../types";
 import { ExecutionModePreference } from "../execution/contracts";
 
+import { defaultWorkspaceTools, readWorkspaceTools, type WorkspaceTool } from "./workspaceTools";
+
 export type StudioTheme = "light" | "dark";
 
 export interface StudioPreferences {
+  workspaceTools: WorkspaceTool[];
   theme: StudioTheme;
   defaultLanguage: LanguageId;
   defaultExecutionMode: ExecutionModePreference;
@@ -27,6 +30,7 @@ export interface StudioPreferences {
 const STORAGE_KEY = "dryrun.studio_preferences.v1";
 
 export const DEFAULT_STUDIO_PREFERENCES: StudioPreferences = {
+  workspaceTools: defaultWorkspaceTools,
   theme: "light",
   defaultLanguage: "javascript",
   defaultExecutionMode: "auto",
@@ -53,6 +57,7 @@ export function loadStudioPreferences(): StudioPreferences {
     if (!raw) return DEFAULT_STUDIO_PREFERENCES;
     const parsed = JSON.parse(raw);
     return {
+      workspaceTools: readWorkspaceTools(parsed.workspaceTools),
       theme: parsed.theme === "dark" ? "dark" : "light",
       defaultLanguage: parsed.defaultLanguage || "javascript",
       defaultExecutionMode: parseExecutionModePreference(

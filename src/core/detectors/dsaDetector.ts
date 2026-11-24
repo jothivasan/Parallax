@@ -1838,7 +1838,8 @@ export class DsaPatternDetector {
     currentEvent: TraceEvent,
     history: TraceEvent[]
   ): DsaPattern | null {
-    if (stackFrames.length < 2) return null;
+    const names = stackFrames.map(frame => frame.functionId ?? frame.functionName).filter(name => name && name !== 'anonymous' && name !== '<global>');
+    if (new Set(names).size === names.length) return null;
 
     const nodes = stackFrames.map((frame, idx) => {
       const paramList = Object.entries(frame.variables)

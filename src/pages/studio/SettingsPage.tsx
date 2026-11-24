@@ -5,6 +5,7 @@
 import React, { useState } from "react";
 import {
   Check,
+  Layers,
   Code2,
   Database,
   Download,
@@ -26,6 +27,8 @@ import { defaultNativeExecutionManager } from "../../core/execution/nativeExecut
 import { LearningProgressStore } from "../../core/intelligence/learningProgressStore";
 import { SavedSnippetsStore } from "../../core/intelligence/savedSnippetsStore";
 import { LanguageId } from "../../core/types";
+
+import { defaultWorkspaceTools, readWorkspaceTools, workspaceToolGroups } from "../../core/settings/workspaceTools";
 
 const editorSample = [
   "const values = [4, 9, 2, 7];",
@@ -101,7 +104,7 @@ export const SettingsPage: React.FC = () => {
         return;
       }
       if (parsed.preferences) {
-        updatePreferences(parsed.preferences);
+        updatePreferences({ ...parsed.preferences, workspaceTools: readWorkspaceTools(parsed.preferences.workspaceTools) });
       }
       if (parsed.snippets) {
         snippetsStore.importSnippetsJson(JSON.stringify(parsed.snippets));
@@ -138,8 +141,7 @@ export const SettingsPage: React.FC = () => {
         <div>
           <h1>Studio settings</h1>
           <p>
-            Set up your editor and execution defaults, and manage the workspace
-            data stored in this browser.
+            Choose your workspace tools, set editor and execution defaults, and manage saved work.
           </p>
         </div>
         <button
@@ -156,6 +158,7 @@ export const SettingsPage: React.FC = () => {
 
       <div className="settings-grid">
         <nav className="settings-index" aria-label="On this settings page">
+          <a href="#workspace-tools"><Layers size={17} aria-hidden="true" /> Workspace tools</a>
           <a href="#editor-settings">
             <Code2 size={17} aria-hidden="true" /> Code editor
           </a>
@@ -168,6 +171,33 @@ export const SettingsPage: React.FC = () => {
         </nav>
 
         <div className="settings-sections">
+          <section className="settings-section" id="workspace-tools" aria-labelledby="workspace-tools-title">
+            <header className="settings-section-heading">
+              <h2 id="workspace-tools-title">Workspace tools</h2>
+              <p>Studio starts with code and the structure canvas. Choose what else appears when you practice. Changes are saved in this browser.</p>
+            </header>
+            {workspaceToolGroups.map(({ name, tools }) => (
+              <fieldset key={name} className="settings-tool-group">
+                <legend>{name}</legend>
+                <div className="settings-tool-grid">
+                  {tools.map(([id, label, description]) => (
+                    <label key={id}>
+                      <input type="checkbox" aria-label={label} aria-describedby={`tool-help-${id}`}
+                        checked={preferences.workspaceTools.includes(id)}
+                        onChange={({ target }) => updatePreferences({ workspaceTools: target.checked
+                          ? [...preferences.workspaceTools, id]
+                          : preferences.workspaceTools.filter(tool => tool !== id) })} />
+                      <span><strong>{label}</strong><small id={`tool-help-${id}`}>{description}</small></span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            ))}
+            <button className="practice-button" type="button" onClick={() => {
+              updatePreferences({ workspaceTools: defaultWorkspaceTools });
+              setStatusBanner("Workspace tool defaults restored.");
+            }}>Restore workspace defaults</button>
+          </section>
           <section
             className="settings-section"
             id="editor-settings"

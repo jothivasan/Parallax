@@ -4,7 +4,7 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronDown, Cpu, Play, Settings2, Square } from 'lucide-react';
+import { ChevronDown, Cpu, Play, PanelsTopLeft, Square } from 'lucide-react';
 import { ExecutionModeSelectorBar, type ExecutionModeSelectorBarProps } from './ExecutionModeSelectorBar';
 import type { StudioLayoutMode } from './StudioWorkspace';
 
@@ -24,10 +24,11 @@ interface StudioHeaderProps extends ExecutionModeSelectorBarProps {
   layout: StudioLayoutMode;
   onLayoutChange: (layout: StudioLayoutMode) => void;
   onRun: () => void;
+  onOpenSessions: () => void;
 }
 
 export function StudioHeader({
-  languageName, context, layout, onLayoutChange, onRun, onCancelExecution, ...runtime
+  languageName, context, layout, onLayoutChange, onRun, onOpenSessions, onCancelExecution, ...runtime
 }: StudioHeaderProps) {
   const { executionState, isExecuting, progress } = runtime;
   const { modePreference, effectiveMode, badgeStatus } = executionState;
@@ -54,7 +55,7 @@ export function StudioHeader({
           <ExecutionModeSelectorBar {...runtime} />
         </div>
         <button type="button" className="studio-icon studio-settings-trigger" popoverTarget="studio-actions" aria-label="Studio actions and layout" title="Studio actions and layout">
-          <Settings2 size={17} aria-hidden="true" />
+          <PanelsTopLeft size={17} aria-hidden="true" />
         </button>
         <div className="studio-popover studio-actions-popover" id="studio-actions" popover="auto" aria-label="Studio actions">
           <h2>Workspace layout</h2>
@@ -67,7 +68,7 @@ export function StudioHeader({
               </label>
             ))}
           </fieldset>
-          <Link to="/settings">Studio settings</Link>
+          <button type="button" className="studio-control" popoverTarget="studio-actions" popoverTargetAction="hide" onClick={onOpenSessions}>Open saved sessions</button>
         </div>
         {isExecuting ? (
           <button type="button" onClick={onCancelExecution} className="studio-run" data-testid="studio-cancel-button" title={progress?.detailMessage || 'Cancel execution'}>

@@ -12,7 +12,7 @@
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
     "typecheck": "tsc --noEmit",
-    "test": "tsx --test src/core/architecture.test.ts src/core/visualization.test.ts src/core/phase11Learning.test.ts src/core/phase12Production.test.ts"
+    "test": "tsx --test src/core/architecture.test.ts src/core/visualization.test.ts src/core/visualization/scene.test.tsx src/core/phase11Learning.test.ts src/core/phase12Production.test.ts"
   },
   "dependencies": {
     "@babel/standalone": "^8.1.1",

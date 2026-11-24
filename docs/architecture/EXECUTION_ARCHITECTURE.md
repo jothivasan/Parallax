@@ -127,3 +127,20 @@ stateDiagram-v2
 - [Native Execution Architecture](NATIVE_EXECUTION.md)
 - [Language Compatibility Reference](../reference/LANGUAGE_COMPATIBILITY.md)
 - [Security & Sandbox Limitations](../reference/SECURITY_AND_SANDBOX_LIMITATIONS.md)
+
+## Visualization after execution
+
+```mermaid
+flowchart LR
+    Trace[Completed ExecutionTrace] --> Replay[Replay controller]
+    Trace --> Worker[Scene analysis worker]
+    Worker --> Index[Invocation and access history]
+    Worker --> Patterns[Patterns for selected step]
+    Replay --> Step[Active scope and heap]
+    Step --> Scene[Structure Canvas]
+    Index --> Scene
+    Patterns --> Scene
+    Choices[Session visualizer choices] --> Scene
+```
+
+The analysis worker is replaced when Studio receives a new trace. Replaying a step or applying a view choice uses captured data. Optional event fields include indexed string reads, map/set operations, and verified indexed operands contributing to array writes. Heap objects can carry typed key/value entries. Call frames can include a function definition identity distinct from their invocation ID.
