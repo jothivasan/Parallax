@@ -420,6 +420,7 @@ export interface MemoryValue {
 }
 
 export interface StackFrame {
+  functionId?: string;
   id: string;
   functionName: string;
   fileName: string;
@@ -434,6 +435,8 @@ export interface StackFrame {
 }
 
 export interface HeapObject {
+  entries?: Array<{ key: MemoryValue; value: MemoryValue }>;
+  collectionSize?: number;
   id: string;
   address: string;
   typeName: string;
@@ -556,6 +559,9 @@ export type TraceEventType =
   | 'error';
 
 export interface ArrayOperationMeta {
+  removedValue?: MemoryValue;
+  insertedValues?: MemoryValue[];
+  inputReads?: Array<{ objectId: string; index: number; variableName?: string }>;
   objectId: string;
   variableName?: string;
   operation: 'create' | 'read' | 'write' | 'swap' | 'mutate';
@@ -583,7 +589,16 @@ export interface ActiveLoopContext {
   depth: number;
 }
 
+export interface IndexedRead {
+  variableName: string;
+  index: number;
+  indexVarName?: string;
+  value: string;
+}
+
 export interface TraceEvent {
+  indexedRead?: IndexedRead;
+  collectionOp?: { objectId: string; method: string; key?: MemoryValue; result?: MemoryValue };
   stepIndex: number;
   type: TraceEventType;
   line: number;
@@ -999,6 +1014,7 @@ export interface ChallengeEvaluationReport {
 }
 
 export interface SavedCodeSnippet {
+  visualizer?: import('./visualization/config').VisualizerConfig;
   id: string;
   title: string;
   language: LanguageId;

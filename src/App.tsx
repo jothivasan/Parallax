@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { BrowserRouter, MemoryRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, MemoryRouter, Routes, Route, Navigate, useMatch } from 'react-router-dom';
 import { StudioPreferencesProvider } from './core/settings/studioPreferencesStore';
 
 // Layouts
@@ -31,6 +31,17 @@ declare global {
   }
 }
 
+// Keep the live editor and replay controller mounted during a settings visit.
+function StudioSettingsRoutes() {
+  const inStudio = Boolean(useMatch('/studio'));
+  const [visitedStudio, setVisitedStudio] = React.useState(inStudio);
+  if (inStudio && !visitedStudio) setVisitedStudio(true);
+  return <>
+    {visitedStudio && <StudioPage visible={inStudio} />}
+    {!inStudio && <SettingsPage />}
+  </>;
+}
+
 export default function App() {
   const isFileProtocol = typeof window !== 'undefined' && window.location.protocol === 'file:';
   const initialRoute = (typeof window !== 'undefined' && window.__INITIAL_ROUTE__) || '/';
@@ -54,10 +65,12 @@ export default function App() {
 
       {/* B. Main Application Experience (Supports Light Default + Dark Theme Switch) */}
       <Route element={<StudioLayout />}>
-        <Route path="/studio" element={<StudioPage />} />
+        <Route element={<StudioSettingsRoutes />}>
+          <Route path="/studio" element={null} />
+          <Route path="/settings" element={null} />
+        </Route>
         <Route path="/learn" element={<LearningPathPage />} />
         <Route path="/challenges" element={<ChallengesPage />} />
-        <Route path="/settings" element={<SettingsPage />} />
       </Route>
     </Routes>
   );

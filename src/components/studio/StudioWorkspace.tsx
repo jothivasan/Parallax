@@ -100,7 +100,7 @@ export function StudioTabs<T extends string>({
 
   return (
     <div className={primary ? 'studio-workspace' : 'studio-subworkspace'}>
-      <div className={primary ? 'studio-tabs' : 'studio-tabs studio-tabs-secondary'} role="tablist" aria-label={label}>
+      {tabs.length > 1 && <div className={primary ? 'studio-tabs' : 'studio-tabs studio-tabs-secondary'} role="tablist" aria-label={label}>
         {tabs.map(({ id: key, label: name, icon: Icon }, index) => (
           <button
             type="button"
@@ -131,14 +131,15 @@ export function StudioTabs<T extends string>({
             {name}
           </button>
         ))}
-      </div>
+      </div>}
       {afterTabs}
-      {tabs.map(({ id: key, content }) => (
+      {tabs.map(({ id: key, content, label: name }) => (
         <div
           key={key}
           id={`${id}-panel-${key}`}
-          role="tabpanel"
-          aria-labelledby={`${id}-tab-${key}`}
+          role={tabs.length > 1 ? 'tabpanel' : 'region'}
+          aria-label={tabs.length === 1 ? name : undefined}
+          aria-labelledby={tabs.length > 1 ? `${id}-tab-${key}` : undefined}
           hidden={key !== value}
           tabIndex={0}
           className={primary ? 'studio-workspace-content' : 'studio-subworkspace-content'}
@@ -150,7 +151,7 @@ export function StudioTabs<T extends string>({
   );
 }
 
-export function StudioCanvas({ children, fitContent = false }: { children: React.ReactNode; fitContent?: boolean }) {
+export function StudioCanvas({ children, controls, fitContent = false }: { children: React.ReactNode; controls?: React.ReactNode; fitContent?: boolean }) {
   const [zoom, setZoom] = useState(1);
   const viewport = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLDivElement>(null);
@@ -172,6 +173,7 @@ export function StudioCanvas({ children, fitContent = false }: { children: React
   return (
     <div className="studio-canvas">
       <div className="studio-canvas-controls" aria-label="Canvas controls">
+        {controls}
         <button className="studio-icon" type="button" title="Zoom out" aria-label="Zoom out" disabled={zoom <= 0.5} onClick={() => setZoom(Math.max(0.5, zoom - 0.25))}><Minus size={15} /></button>
         <output aria-label="Canvas zoom">{Math.round(zoom * 100)}%</output>
         <button className="studio-icon" type="button" title="Zoom in" aria-label="Zoom in" disabled={zoom >= 2} onClick={() => setZoom(Math.min(2, zoom + 0.25))}><Plus size={15} /></button>

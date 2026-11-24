@@ -1415,13 +1415,17 @@ class _PyTraceRuntime:
             if obj_id not in visited and depth < 10:
                 visited.add(obj_id)
                 fields = {}
+                entries = []
                 for k, v in raw_val.items():
-                    fields[str(k)] = self._serialize_value(v, heap, visited, depth + 1)
+                    value = self._serialize_value(v, heap, visited, depth + 1)
+                    fields[str(k)] = value
+                    entries.append({"key": self._serialize_value(k, heap, visited, depth + 1), "value": value})
                 heap[obj_id] = {
                     "id": obj_id,
                     "address": obj_id,
                     "typeName": type_label,
                     "fields": fields,
+                    "entries": entries,
                 }
             return {
                 "kind": "reference",
@@ -1542,6 +1546,7 @@ class _PyTraceRuntime:
         return_value=None,
         array_op=None,
         extra_meta=None,
+        indexed_read=None,
     ):
         self._check_quotas()
         if diffs is None:
@@ -1602,6 +1607,8 @@ class _PyTraceRuntime:
             ev["args"] = args
         if return_value is not None:
             ev["returnValue"] = return_value
+        if indexed_read is not None:
+            ev["indexedRead"] = indexed_read
         if array_op is not None:
             ev["arrayOp"] = array_op
 
@@ -1852,6 +1859,9 @@ class _PyTraceRuntime:
 
     def get_subscript(self, obj, key, obj_name, idx_var_name, line, col):
         val = obj[key]
+        if isinstance(obj, str) and isinstance(key, int) and obj_name:
+            self._record_event("read", line, col, f"Read {obj_name}[{key}] → {val!r}",
+                indexed_read={"variableName": obj_name, "index": key % len(obj), "indexVarName": idx_var_name, "value": repr(val)})
         if isinstance(obj, (list, tuple)) and isinstance(key, int):
             norm_idx = key if key >= 0 else len(obj) + key
             obj_id = self.get_or_assign_obj_id(obj)

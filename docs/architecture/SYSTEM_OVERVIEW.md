@@ -10,7 +10,7 @@ This document serves as the authoritative high-level architecture specification 
 
 Learners and engineers write standard source code across **7 supported languages**, run it step-by-step, inspect variable frames and dynamic heap graphs, navigate execution history forward and backward, and verify algorithmic solutions.
 
-Every visual is grounded in a captured execution step. The runtime records values and memory relationships, and the Studio uses those observations to recognize data structures.
+The Structure Canvas draws active-scope values directly from each captured step. A dedicated analysis worker indexes calls and observed accesses, and supplies DSA patterns for replay. Optional session choices refine the drawing. The runtime records values and memory relationships, and the Studio uses those observations to recognize data structures.
 
 ---
 

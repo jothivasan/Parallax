@@ -29,7 +29,8 @@ import {
   resolveStudioExecutionState,
 } from '../../core/execution/executionModeResolver';
 import { TimeTravelController } from '../../core/replay/timeTravelController';
-import { DsaPatternDetector } from '../../core/detectors/dsaDetector';
+import { autoView, readConfig, type VisualizerConfig } from '../../core/visualization/config';
+import type { SceneHistory } from '../../core/visualization/history';
 import { LearningProgressStore } from '../../core/intelligence/learningProgressStore';
 import { SavedSnippetsStore } from '../../core/intelligence/savedSnippetsStore';
 import { ErrorExplainer } from '../../core/intelligence/errorExplainer';
@@ -40,6 +41,7 @@ import {
 } from '../../core/intelligence/dsaLearningPath';
 import { ChallengeEngine } from '../../core/intelligence/challengeEngine';
 import { useStudioPreferences } from '../../core/settings/studioPreferencesStore';
+import type { WorkspaceTool } from '../../core/settings/workspaceTools';
 import { getBackendConfig } from '../../config/backendConfig';
 
 import { CodeEditorPanel } from '../../components/studio/CodeEditorPanel';
@@ -49,7 +51,8 @@ import { RuntimeSnapshot, StudioConsoleOutput } from '../../components/studio/St
 import './studio.css';
 import { TimeTravelToolbar } from '../../components/studio/TimeTravelToolbar';
 import { StepExplanationBanner } from '../../components/studio/StepExplanationBanner';
-import { DsaVisualizerView } from '../../components/studio/DsaVisualizerView';
+import { ExecutionScene } from '../../components/studio/ExecutionScene';
+import { VisualizerSetup } from '../../components/studio/VisualizerSetup';
 import { CMemoryVisualizerPanel } from '../../components/studio/CMemoryVisualizerPanel';
 import { JavaMemoryVisualizerPanel } from '../../components/studio/JavaMemoryVisualizerPanel';
 import { CSharpMemoryVisualizerPanel } from '../../components/studio/CSharpMemoryVisualizerPanel';
@@ -76,7 +79,7 @@ type AnalysisTool = 'prediction_mode' | 'complexity_lab' | 'edge_case_lab' | 'co
 
 const analysisTools: readonly string[] = ['prediction_mode', 'complexity_lab', 'edge_case_lab', 'code_comparison'];
 
-export const StudioPage: React.FC = () => {
+export const StudioPage: React.FC<{ visible?: boolean }> = ({ visible = true }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { preferences, updatePreferences } = useStudioPreferences();
 
@@ -107,7 +110,12 @@ export const StudioPage: React.FC = () => {
   const [trace, setTrace] = useState<ExecutionTrace | null>(null);
   const [currentStepIndex, setCurrentStepIndex] = useState<number>(0);
   const [activeStep, setActiveStep] = useState<TraceEvent | null>(null);
-  const [activePatterns, setActivePatterns] = useState<DsaPattern[]>([]);
+  const [visualizer, setVisualizer] = useState<VisualizerConfig>(autoView);
+  const [analysis, setAnalysis] = useState<{trace: ExecutionTrace; step: number; patterns: DsaPattern[]}>();
+  const [history, setHistory] = useState<{trace: ExecutionTrace; index: SceneHistory}>();
+  const analysisWorker = useRef<Worker | null>(null);
+  const activePatterns = analysis?.trace === trace && analysis?.step === currentStepIndex ? analysis.patterns : [];
+
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [playbackSpeedMs, setPlaybackSpeedMs] = useState<number>(
     preferences.playbackSpeedMs || 600
@@ -122,7 +130,9 @@ export const StudioPage: React.FC = () => {
   const [workspace, setWorkspace] = useState<Workspace>('visualize');
   const [canvasMode, setCanvasMode] = useState<'dsa' | 'memory'>('dsa');
   const [inspector, setInspector] = useState<Inspector>('variables');
-  const [analysisTool, setAnalysisTool] = useState<AnalysisTool>('prediction_mode');
+  const [analysisTool, setAnalysisTool] = useState<AnalysisTool>('complexity_lab');
+  const [temporaryTools, setTemporaryTools] = useState<WorkspaceTool[]>([]);
+  const toolEnabled = (tool: WorkspaceTool) => preferences.workspaceTools.includes(tool) || temporaryTools.includes(tool);
   const [mobilePane, setMobilePane] = useState<StudioPane>('editor');
   const [layoutPreset, setLayoutPreset] = useState<'balanced' | 'visualizer' | 'code'>(() => {
     try {
@@ -180,6 +190,23 @@ export const StudioPage: React.FC = () => {
       activeCancellationRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    if (!trace?.events.length) return;
+    const worker = new Worker(new URL('../../core/visualization/sceneWorker.ts', import.meta.url), { type: 'module' });
+    analysisWorker.current = worker;
+    worker.onmessage = ({data}) => {
+      if (data.history) setHistory({trace,index:data.history});
+      if (data.patterns) setAnalysis({trace,step:data.step,patterns:data.patterns});
+      if (data.kinds) progressStoreRef.current.recordProgramExecution(data.kinds,trace.language);
+    };
+    worker.postMessage({trace});
+    return () => { analysisWorker.current = null; worker.terminate(); };
+  }, [trace]);
+
+  useEffect(() => {
+    analysisWorker.current?.postMessage({step:currentStepIndex});
+  }, [trace,currentStepIndex]);
 
   const refreshCapabilitySnapshot = (
     lang: LanguageId,
@@ -296,7 +323,7 @@ export const StudioPage: React.FC = () => {
       controllerRef.current = null;
       setTrace(null);
       setActiveStep(null);
-      setActivePatterns([]);
+      setAnalysis(undefined);
       setCurrentStepIndex(0);
     }
     setSourceReveal(null);
@@ -345,11 +372,6 @@ export const StudioPage: React.FC = () => {
         controller.subscribe((step, stepIdx) => {
           setCurrentStepIndex(stepIdx);
           setActiveStep(step);
-          const detected =
-            step.type === 'error'
-              ? []
-              : DsaPatternDetector.detectPatterns(step, result.events);
-          setActivePatterns(detected);
           if (controller.isReplaying() &&
               (stepIdx === result.events.length - 1 || controller.hasBreakpoint(step.line))) {
             controller.pause();
@@ -363,16 +385,11 @@ export const StudioPage: React.FC = () => {
           controller.jumpToStep(0);
         }
 
-        const fullCatalog = DsaPatternDetector.analyzeFullTraceCatalog(result);
-        progressStoreRef.current.recordProgramExecution(
-          fullCatalog.detected.map((p) => p.kind),
-          lang
-        );
       } else {
         controllerRef.current = null;
         setCurrentStepIndex(0);
         setActiveStep(null);
-        setActivePatterns([]);
+        setAnalysis(undefined);
       }
     } finally {
       if (activeCancellationRef.current === token) {
@@ -414,9 +431,11 @@ export const StudioPage: React.FC = () => {
     }
 
     if (toolParam && analysisTools.includes(toolParam)) {
+      setTemporaryTools([toolParam as AnalysisTool]);
       setAnalysisTool(toolParam as AnalysisTool);
       showWorkspace('analyze');
     } else if (toolParam === 'saved_sessions' || toolParam === 'console_events') {
+      setTemporaryTools(toolParam === 'saved_sessions' ? ['sessions'] : ['console', 'events']);
       showWorkspace(toolParam === 'saved_sessions' ? 'sessions' : 'console');
     }
 
@@ -427,6 +446,7 @@ export const StudioPage: React.FC = () => {
   }, []);
 
   const handleLanguageChange = (lang: LanguageId) => {
+    setVisualizer(autoView);
     setSelectedLanguage(lang);
     const langMeta = SUPPORTED_LANGUAGES[lang];
     let nextCode = langMeta.defaultCode;
@@ -453,6 +473,7 @@ export const StudioPage: React.FC = () => {
   const handleSelectTemplate = (template: { name: string; code: string; language: LanguageId }) => {
     setActiveTopicId(null);
     setActiveChallengeId(null);
+    setVisualizer(autoView);
     setCode(template.code);
     setSelectedHistoryVar(null);
     executeCode(selectedLanguage, template.code);
@@ -469,6 +490,7 @@ export const StudioPage: React.FC = () => {
 
   const handleResetCode = () => {
     const defaultCode = SUPPORTED_LANGUAGES[selectedLanguage]?.defaultCode || '';
+    setVisualizer(autoView);
     setCode(defaultCode);
     executeCode(selectedLanguage, defaultCode);
   };
@@ -484,6 +506,7 @@ export const StudioPage: React.FC = () => {
       language: selectedLanguage,
       code,
       customInput: customInputLiteral,
+      visualizer,
       topicId: activeTopicId || undefined,
       challengeId: activeChallengeId || undefined,
       categoryTag: activeChallengeId
@@ -492,8 +515,23 @@ export const StudioPage: React.FC = () => {
       isChallengeAttempt: Boolean(activeChallengeId),
     });
     setSavedSnippets(snippetsStoreRef.current.getSnippets());
-    showWorkspace('sessions');
+    openSessions();
   };
+
+  function openSessions() {
+    if (!toolEnabled('sessions')) setTemporaryTools(previous => [...previous, 'sessions']);
+    showWorkspace('sessions');
+  }
+
+  useEffect(() => {
+    if (!visible) {
+      controllerRef.current?.pause();
+      setIsPlaying(false);
+      setTemporaryTools([]);
+    } else {
+      setSavedSnippets(snippetsStoreRef.current.getSnippets());
+    }
+  }, [visible]);
 
   function clearBreakpoints() {
     currentBreakpoints.current.forEach((line) => controllerRef.current?.toggleBreakpoint(line));
@@ -564,8 +602,9 @@ export const StudioPage: React.FC = () => {
   };
 
   useEffect(() => {
+    if (!visible) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || event.isComposing) return;
+      if (event.defaultPrevented || event.isComposing || document.querySelector('dialog[open]')) return;
       if (event.key === 'Escape' && maximized && !document.querySelector(':popover-open')) {
         setMaximized(null);
         return;
@@ -705,14 +744,126 @@ export const StudioPage: React.FC = () => {
         : <CSharpMemoryVisualizerPanel {...props} view={id} />,
     })));
   }
-  const inspectorView: Inspector =
-    (['pointers', 'objects', 'collections', 'timeline'].includes(inspector) && !memoryTabs.some(({ id }) => id === inspector))
-      ? 'variables' : inspector;
-
   const addressModel = activeStep?.metadata?.addressModel ?? trace?.metadata?.addressModel;
 
+  const inspectTabs = ([
+    { id: 'variables', label: 'Variables', content: (
+      <VariableInspector
+        activeStep={activeStep}
+        currentStepIndex={currentStepIndex}
+        selectedVarName={activeVarName}
+        variableTimeline={variableTimeline}
+        onSelectVariable={setSelectedHistoryVar}
+        onJumpToStep={jumpToStep}
+      />
+    ) },
+    { id: 'call_stack', label: 'Call Stack', content: (
+      <CallStackVisualizer
+        stackFrames={activeStep?.stackFrames || []}
+        activeStep={activeStep}
+        onSelectLine={traceMatchesEditor ? revealSource : undefined}
+      />
+    ) },
+    { id: 'memory', label: 'Memory', content: <MemoryInspectorView activeStep={activeStep} /> },
+    { id: 'patterns', label: 'Patterns', content: (
+      <PatternIntelligencePanel
+        trace={trace}
+        activePatterns={activePatterns}
+        onJumpToLine={handleJumpToLine}
+      />
+    ) },
+    { id: 'details', label: 'Loops', content: (
+      <div className="space-y-5">
+        <ConditionInspector
+          activeStep={activeStep}
+          allEvents={trace?.events || []}
+          onSelectStep={jumpToStep}
+        />
+        <LoopInspector
+          activeStep={activeStep}
+          allEvents={trace?.events || []}
+          onSelectStep={jumpToStep}
+        />
+        <TraceTableView
+          events={trace?.events || []}
+          currentStepIndex={currentStepIndex}
+          onSelectStep={jumpToStep}
+        />
+      </div>
+    ) },
+    ...memoryTabs,
+  ] satisfies StudioTab<Inspector>[]).filter(tab => toolEnabled(tab.id));
+  const analyzeTabs = ([
+    { id: 'complexity_lab', label: 'Complexity', content: (
+      <ComplexityLabPanel
+        trace={trace}
+        sourceCode={code}
+        language={selectedLanguage}
+        onExperimentCompleted={() => {
+          progressStoreRef.current.recordComplexityExperiment();
+        }}
+      />
+    ) },
+    { id: 'prediction_mode', label: 'Prediction Mode', content: (
+      <PredictionModePanel
+        trace={trace}
+        currentStepIndex={currentStepIndex}
+        attempts={predictionAttempts}
+        onStepForward={stepForward}
+        onRecordAttempt={handleRecordPrediction}
+        onJumpToStep={jumpToStep}
+      />
+    ) },
+    { id: 'edge_case_lab', label: 'Edge-Case Lab', content: (
+      <EdgeCaseLabPanel
+        sourceCode={code}
+        language={selectedLanguage}
+        onLoadScenarioCode={(modifiedCode) => {
+          setCode(modifiedCode);
+          executeCode(selectedLanguage, modifiedCode);
+        }}
+        onEdgeCasesTested={(count) => {
+          progressStoreRef.current.recordEdgeCasesTested(count);
+        }}
+      />
+    ) },
+    { id: 'code_comparison', label: 'Code Comparison', content: (
+      <CodeComparisonPanel
+        currentEditorCode={code}
+        language={selectedLanguage}
+        onLoadCodeIntoEditor={(newCode) => {
+          setVisualizer(autoView);
+          setCode(newCode);
+          executeCode(selectedLanguage, newCode);
+        }}
+        onComparisonCompleted={() => {
+          progressStoreRef.current.recordComparisonRun();
+        }}
+      />
+    ) },
+  ] satisfies StudioTab<AnalysisTool>[]).filter(tab => toolEnabled(tab.id));
+  const selectedInspector = inspectTabs.find(tab => tab.id === inspector)?.id ?? inspectTabs[0]?.id;
+  const selectedAnalysis = analyzeTabs.find(tab => tab.id === analysisTool)?.id ?? analyzeTabs[0]?.id;
+  const available: Record<Workspace, boolean> = {
+    visualize: true, inspect: !!selectedInspector, analyze: !!selectedAnalysis,
+    console: toolEnabled('console') || toolEnabled('events'), sessions: toolEnabled('sessions'),
+  };
+  const activeToolHidden = !available[workspace]
+    || (workspace === 'visualize' && canvasMode === 'memory' && !toolEnabled('stack_heap'))
+    || (workspace === 'inspect' && inspector !== selectedInspector)
+    || (workspace === 'analyze' && analysisTool !== selectedAnalysis);
+
+  useEffect(() => {
+    if (activeToolHidden) {
+      setWorkspace('visualize');
+      setCanvasMode('dsa');
+    }
+    if (selectedInspector) setInspector(selectedInspector);
+    if (selectedAnalysis) setAnalysisTool(selectedAnalysis);
+  }, [activeToolHidden, selectedInspector, selectedAnalysis]);
+
   return (
-    <div className="studio-page">
+    <div className="studio-page" hidden={!visible}>
       <StudioHeader
         languageName={SUPPORTED_LANGUAGES[selectedLanguage].name}
         context={context}
@@ -724,6 +875,7 @@ export const StudioPage: React.FC = () => {
         onCancelExecution={handleCancelExecution}
         layout={layout}
         onLayoutChange={changeLayout}
+        onOpenSessions={openSessions}
         onRun={runDraft}
       />
 
@@ -789,155 +941,63 @@ export const StudioPage: React.FC = () => {
               </button>
             </div>
 
-            {(isExecuting || executionCancelled || structuredError || (trace && !traceMatchesEditor)) && (
-              <div className="studio-trace-notice" data-error={Boolean(structuredError && !isExecuting && !executionCancelled)} role="status">
-                <span>{isExecuting ? activeProgress?.stageTitle ?? 'Generating trace' : executionCancelled ? 'Execution stopped' : structuredError ? structuredError.badgeLabel : 'Source changed. Run again to update the trace.'}</span>
-                {structuredError && !isExecuting && <button onClick={() => showWorkspace('console')} type="button">View error</button>}
+            {(isExecuting || executionCancelled || (trace && !traceMatchesEditor)) && (
+              <div className="studio-trace-notice" role="status">
+                <span>{isExecuting ? activeProgress?.stageTitle ?? 'Generating trace' : executionCancelled ? 'Execution stopped' : 'Source changed. Run again to update the trace.'}</span>
+              </div>
+            )}
+
+            {structuredError && !isExecuting && !executionCancelled && (
+              <div className="studio-error" role="alert" data-testid="structured-error-banner">
+                <AlertCircle size={17} aria-hidden="true" />
+                <div>
+                  <h3>{structuredError.badgeLabel}</h3>
+                  <p>{structuredError.whatFailed}</p>
+                  {!structuredError.whatFailed.includes(structuredError.sanitizedMessage) && (
+                    <pre className="studio-error-message">{structuredError.sanitizedMessage}</pre>
+                  )}
+                  <p>{traceMatchesEditor && structuredError.line ? <button type="button" onClick={() => revealSource(structuredError.line)}>{structuredError.whereItFailed}</button> : structuredError.whereItFailed}</p>
+                  <p>{structuredError.whyItFailed}</p>
+                  <p><strong>Try this:</strong> {structuredError.whatToTryNext}</p>
+                </div>
               </div>
             )}
 
             <StudioTabs
-              primary label="Execution workspace" value={workspace} onChange={setWorkspace}
-              tabs={[
+              primary label="Execution workspace" value={available[workspace] ? workspace : 'visualize'} onChange={setWorkspace}
+              tabs={([
                 { id: 'visualize', label: 'Visualize', icon: Layers, content: (
-                  <StudioTabs label="Visualization view" value={canvasMode} onChange={setCanvasMode}
-                    afterTabs={activeStep && <StepExplanationBanner activeStep={activeStep} prevStep={prevStep} nextStep={nextStep} mode={explanationMode} onModeChange={setExplanationMode} compact />}
-                    tabs={[
-                    { id: 'dsa', label: 'Structure Canvas', content: activeStep ? (
-                      <StudioCanvas>
-                        <DsaVisualizerView embedded patterns={activePatterns} activeStep={activeStep} />
+                  <StudioTabs label="Visualization view" value={toolEnabled('stack_heap') ? canvasMode : 'dsa'} onChange={setCanvasMode}
+                    afterTabs={toolEnabled('summary') && activeStep && <StepExplanationBanner activeStep={activeStep} prevStep={prevStep} nextStep={nextStep} mode={explanationMode} onModeChange={setExplanationMode} compact />}
+                    tabs={([
+                    { id: 'dsa', label: 'Structure Canvas', content: (
+                      <StudioCanvas controls={<VisualizerSetup onOpen={pausePlayback} detected={activePatterns.map(p=>p.kind.replaceAll('_',' '))} value={visualizer} onChange={setVisualizer} names={[...new Set(activeStep?.stackFrames.flatMap(f=>Object.keys(f.variables)) ?? [])]}/>}>
+                        {activeStep && trace ? <ExecutionScene trace={trace} step={activeStep} patterns={activePatterns} config={visualizer}
+                          history={history?.trace === trace ? history.index : undefined}/> : emptyVisualization}
                       </StudioCanvas>
-                    ) : emptyVisualization },
+                    ) },
                     { id: 'memory', label: 'Stack & Heap', content: activeStep ? (
                       <StudioCanvas fitContent>
                         <RuntimeSnapshot step={activeStep} addressModel={addressModel} onSource={traceMatchesEditor ? revealSource : undefined} />
                       </StudioCanvas>
                     ) : emptyVisualization },
-                  ]} />
+                  ] satisfies StudioTab<'memory' | 'dsa'>[]).filter(tab => tab.id === 'dsa' || toolEnabled('stack_heap'))} />
                 ) },
-                { id: 'inspect', label: 'Inspect', icon: Cpu, content: (
-                  <StudioTabs label="Runtime inspector" value={inspectorView} onChange={setInspector} tabs={[
-                    { id: 'variables', label: 'Variables', content: (
-                      <VariableInspector
-                        activeStep={activeStep}
-                        currentStepIndex={currentStepIndex}
-                        selectedVarName={activeVarName}
-                        variableTimeline={variableTimeline}
-                        onSelectVariable={setSelectedHistoryVar}
-                        onJumpToStep={jumpToStep}
-                      />
-                    ) },
-                    { id: 'call_stack', label: 'Call Stack', content: (
-                      <CallStackVisualizer
-                        stackFrames={activeStep?.stackFrames || []}
-                        activeStep={activeStep}
-                        onSelectLine={traceMatchesEditor ? revealSource : undefined}
-                      />
-                    ) },
-                    { id: 'memory', label: 'Memory', content: <MemoryInspectorView activeStep={activeStep} /> },
-                    { id: 'patterns', label: 'Patterns', content: (
-                      <PatternIntelligencePanel
-                        trace={trace}
-                        activePatterns={activePatterns}
-                        onJumpToLine={handleJumpToLine}
-                      />
-                    ) },
-                    { id: 'details', label: 'Loops', content: (
-                      <div className="space-y-5">
-                        <ConditionInspector
-                          activeStep={activeStep}
-                          allEvents={trace?.events || []}
-                          onSelectStep={jumpToStep}
-                        />
-                        <LoopInspector
-                          activeStep={activeStep}
-                          allEvents={trace?.events || []}
-                          onSelectStep={jumpToStep}
-                        />
-                        <TraceTableView
-                          events={trace?.events || []}
-                          currentStepIndex={currentStepIndex}
-                          onSelectStep={jumpToStep}
-                        />
-                      </div>
-                    ) },
-                    ...memoryTabs,
-                  ]} />
+                { id: 'inspect', label: inspectTabs.length === 1 ? inspectTabs[0].label : 'Inspect', icon: Cpu, content: (
+                  <StudioTabs label="Runtime inspector" value={selectedInspector} onChange={setInspector} tabs={inspectTabs} />
                 ) },
-                { id: 'analyze', label: 'Analyze', icon: Activity, content: (
-                  <StudioTabs label="Analysis tools" value={analysisTool} onChange={setAnalysisTool} tabs={[
-                    { id: 'prediction_mode', label: 'Prediction Mode', content: (
-                      <PredictionModePanel
-                        trace={trace}
-                        currentStepIndex={currentStepIndex}
-                        attempts={predictionAttempts}
-                        onStepForward={stepForward}
-                        onRecordAttempt={handleRecordPrediction}
-                        onJumpToStep={jumpToStep}
-                      />
-                    ) },
-                    { id: 'complexity_lab', label: 'Complexity Analysis', content: (
-                      <ComplexityLabPanel
-                        trace={trace}
-                        sourceCode={code}
-                        language={selectedLanguage}
-                        onExperimentCompleted={() => {
-                          progressStoreRef.current.recordComplexityExperiment();
-                        }}
-                      />
-                    ) },
-                    { id: 'edge_case_lab', label: 'Edge-Case Lab', content: (
-                      <EdgeCaseLabPanel
-                        sourceCode={code}
-                        language={selectedLanguage}
-                        onLoadScenarioCode={(modifiedCode) => {
-                          setCode(modifiedCode);
-                          executeCode(selectedLanguage, modifiedCode);
-                        }}
-                        onEdgeCasesTested={(count) => {
-                          progressStoreRef.current.recordEdgeCasesTested(count);
-                        }}
-                      />
-                    ) },
-                    { id: 'code_comparison', label: 'Code Comparison', content: (
-                      <CodeComparisonPanel
-                        currentEditorCode={code}
-                        language={selectedLanguage}
-                        onLoadCodeIntoEditor={(newCode) => {
-                          setCode(newCode);
-                          executeCode(selectedLanguage, newCode);
-                        }}
-                        onComparisonCompleted={() => {
-                          progressStoreRef.current.recordComparisonRun();
-                        }}
-                      />
-                    ) },
-                  ]} />
+                { id: 'analyze', label: analyzeTabs.length === 1 ? analyzeTabs[0].label : 'Analyze', icon: Activity, content: (
+                  <StudioTabs label="Analysis tools" value={selectedAnalysis} onChange={setAnalysisTool} tabs={analyzeTabs} />
                 ) },
-                { id: 'console', label: 'Console', icon: Terminal, content: (
+                { id: 'console', label: toolEnabled('console') ? 'Console' : 'Event history', icon: Terminal, content: (
                   <div className="studio-console-workspace">
-                    {structuredError && (
-                      <div className="studio-error" role="alert" data-testid="structured-error-banner">
-                        <AlertCircle size={17} aria-hidden="true" />
-                        <div>
-                          <h3>{structuredError.badgeLabel}</h3>
-                          <p>{structuredError.whatFailed}</p>
-                          {!structuredError.whatFailed.includes(structuredError.sanitizedMessage) && (
-                            <pre className="studio-error-message">{structuredError.sanitizedMessage}</pre>
-                          )}
-                          <p>{traceMatchesEditor && structuredError.line ? <button type="button" onClick={() => revealSource(structuredError.line)}>{structuredError.whereItFailed}</button> : structuredError.whereItFailed}</p>
-                          <p>{structuredError.whyItFailed}</p>
-                          <p><strong>Try this:</strong> {structuredError.whatToTryNext}</p>
-                        </div>
-                      </div>
-                    )}
-                    <StudioConsoleOutput step={activeStep} trace={trace} />
-                    <EventInspector
+                    {toolEnabled('console') && <StudioConsoleOutput step={activeStep} trace={trace} />}
+                    {toolEnabled('events') && <EventInspector
                       events={trace?.events || []}
                       currentStepIndex={currentStepIndex}
                       activeStep={activeStep}
                       onSelectStep={jumpToStep}
-                    />
+                    />}
                   </div>
                 ) },
                 { id: 'sessions', label: 'Sessions', icon: Bookmark, content: (
@@ -954,6 +1014,7 @@ export const StudioPage: React.FC = () => {
                         language: selectedLanguage,
                         code,
                         customInput: customInputLiteral,
+                        visualizer,
                         topicId: activeTopicId || undefined,
                         challengeId: activeChallengeId || undefined,
                         categoryTag,
@@ -962,6 +1023,7 @@ export const StudioPage: React.FC = () => {
                       setSavedSnippets(snippetsStoreRef.current.getSnippets());
                     }}
                     onLoadSnippet={(snippet) => {
+                      setVisualizer(readConfig(snippet.visualizer));
                       setSelectedLanguage(snippet.language);
                       setCode(snippet.code);
                       setCustomInputLiteral(snippet.customInput ?? '');
@@ -1021,7 +1083,7 @@ export const StudioPage: React.FC = () => {
                     }}
                   />
                 ) },
-              ]}
+              ] satisfies StudioTab<Workspace>[]).filter(tab => available[tab.id])}
             />
 
             <div className="studio-execution-footer">

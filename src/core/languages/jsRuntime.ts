@@ -30,6 +30,7 @@ interface VariableMeta {
 }
 
 interface RuntimeFrame {
+  functionId?: string;
   id: string;
   functionName: string;
   fileName: string;
@@ -262,6 +263,31 @@ export class JsTraceRuntime {
         };
       }
 
+      if (rawVal instanceof Map || rawVal instanceof Set) {
+        const isMap = rawVal instanceof Map;
+        const typeName = isMap ? 'Map' : 'Set';
+        if (!visited.has(objId) && depth < 12) {
+          visited.add(objId);
+          const entry: HeapObject = { id: objId, address: objId, typeName, fields: {}, collectionSize: rawVal.size };
+          heap[objId] = entry;
+          // Keep snapshots bounded, including collections with cyclic keys or members.
+          if (isMap) {
+            entry.entries = [];
+            for (const [key, value] of Map.prototype.entries.call(rawVal)) {
+              if (entry.entries.length >= 256) break;
+              entry.entries.push({ key: this.serializeValue(key, heap, visited, depth + 1), value: this.serializeValue(value, heap, visited, depth + 1) });
+            }
+          } else {
+            entry.elements = [];
+            for (const member of Set.prototype.values.call(rawVal)) {
+              if (entry.elements.length >= 256) break;
+              entry.elements.push(this.serializeValue(member, heap, visited, depth + 1));
+            }
+          }
+        }
+        return { kind: 'reference', typeName, value: objId, targetAddress: objId, address: objId, length: rawVal.size, displayString: typeName + '(' + rawVal.size + ')' };
+      }
+
       const ctorName = rawVal.constructor?.name || 'Object';
       if (!visited.has(objId) && depth < 12) {
         visited.add(objId);
@@ -342,6 +368,7 @@ export class JsTraceRuntime {
       return {
         id: frame.id,
         functionName: frame.functionName,
+        functionId: frame.functionId,
         fileName: frame.fileName,
         line: isTop ? activeLine : frame.line,
         col: isTop ? activeCol : frame.col,
@@ -374,6 +401,8 @@ export class JsTraceRuntime {
     functionName?: string;
     args?: MemoryValue[];
     returnValue?: MemoryValue;
+    indexedRead?: TraceEvent['indexedRead'];
+    collectionOp?: TraceEvent['collectionOp'];
     arrayOp?: ArrayOperationMeta;
     metadata?: Record<string, any>;
   }): TraceEvent {
@@ -434,6 +463,8 @@ export class JsTraceRuntime {
       ...(params.functionName !== undefined ? { functionName: params.functionName } : {}),
       ...(params.args !== undefined ? { args: params.args } : {}),
       ...(params.returnValue !== undefined ? { returnValue: params.returnValue } : {}),
+      ...(params.indexedRead && { indexedRead: params.indexedRead }),
+      ...(params.collectionOp && { collectionOp: params.collectionOp }),
       ...(params.arrayOp !== undefined ? { arrayOp: params.arrayOp } : {}),
       metadata: {
         ...(params.metadata || {}),
@@ -717,9 +748,14 @@ export class JsTraceRuntime {
     objName: string | undefined,
     line: number,
     col: number,
-    indexVarName?: string
+    indexVarName?: string,
+    directIndex = true
   ): any {
     const val = obj[prop];
+    if (typeof obj === 'string' && objName && (typeof prop === 'number' || typeof prop === 'string') && /^-?\d+$/.test(String(prop))) {
+      this.recordEvent({ type: 'read', line, col, description: 'Read ' + objName + '[' + prop + '] → ' + String(val),
+        indexedRead: { variableName: objName, index: Number(prop), indexVarName: directIndex ? indexVarName : undefined, value: typeof val === 'string' ? JSON.stringify(val) : 'undefined' } });
+    }
 
     if (Array.isArray(obj) && (typeof prop === 'number' || !isNaN(Number(prop)))) {
       const idx = Number(prop);
@@ -773,7 +809,8 @@ export class JsTraceRuntime {
     rhsVarName: string | undefined,
     line: number,
     col: number,
-    indexVarName?: string
+    indexVarName?: string,
+    operandSites: number[][] = []
   ): any {
     const oldVal = obj[prop];
     let newVal = rhsVal;
@@ -812,6 +849,11 @@ export class JsTraceRuntime {
       const oldSnap = this.createIsolatedValueSnapshot(oldVal);
       const newSnap = this.createIsolatedValueSnapshot(newVal);
 
+      const operandReads = operandSites.length ? this.events.slice(-operandSites.length) : [];
+      const verified = operandReads.length === operandSites.length && operandReads.every((event,i) => {
+        const site = this.mapper.getOriginalLocation(operandSites[i][0],operandSites[i][1]);
+        return event.type === 'array_read' && event.arrayOp?.index !== undefined && event.line === site.line && event.col === site.col;
+      });
       this.recordEvent({
         type: 'array_write',
         line,
@@ -829,6 +871,9 @@ export class JsTraceRuntime {
         arrayOp: {
           objectId: objId,
           ...(objName ? { variableName: objName } : {}),
+          ...(verified && operandReads.length ? { inputReads: operandReads.map(({arrayOp}) => ({
+            objectId: arrayOp!.objectId, variableName: arrayOp!.variableName, index: arrayOp!.index!,
+          })) } : {}),
           operation: 'write',
           index: idx,
           ...(indexVarName ? { indexVarName } : {}),
@@ -1134,7 +1179,7 @@ export class JsTraceRuntime {
       });
 
       const argStr = args
-        .map((a) => (typeof a === 'function' ? `ƒ ${a.name || 'fn'}` : JSON.stringify(a)))
+        .map((a) => this.createIsolatedValueSnapshot(a).displayString)
         .join(', ');
 
       this.recordEvent({
@@ -1148,6 +1193,8 @@ export class JsTraceRuntime {
           operation: 'mutate',
           method: methodName,
           methodArgs: serializedArgs,
+          ...(['pop','shift'].includes(methodName) && oldLen ? {removedValue:this.createIsolatedValueSnapshot(result)} : {}),
+          ...(['push','unshift'].includes(methodName) ? {insertedValues:args.map(a=>this.createIsolatedValueSnapshot(a))} : {}),
           oldValue: oldLen,
           value: typeof result === 'object' && result !== null ? [...(Array.isArray(result) ? result : [])] : result,
           oldElements,
@@ -1158,7 +1205,15 @@ export class JsTraceRuntime {
       return result;
     }
 
-    return fn.apply(obj, args);
+    const result = fn.apply(obj, args);
+    if ((obj instanceof Map || obj instanceof Set) && ['has', 'get', 'add', 'set', 'clear', 'delete'].includes(methodName)) {
+      this.recordEvent({ type: ['has', 'get'].includes(methodName) ? 'read' : 'assign', line, col,
+        description: (objName ?? obj.constructor.name) + '.' + methodName + '()',
+        collectionOp: { objectId: this.getOrAssignObjectId(obj), method: methodName,
+          key: args.length ? this.createIsolatedValueSnapshot(args[0]) : undefined,
+          result: result === obj ? undefined : this.createIsolatedValueSnapshot(result) } });
+    }
+    return result;
   }
 
   /**
@@ -1332,6 +1387,7 @@ export class JsTraceRuntime {
 
     const newFrame: RuntimeFrame = {
       id: frameId,
+      functionId: this.fileName + ':' + line + ':' + col,
       functionName: fnName,
       fileName: this.fileName,
       line,

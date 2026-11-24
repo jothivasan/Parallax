@@ -17,10 +17,10 @@ Open [localhost:3000](http://localhost:3000). Browser Mode needs no native compi
 
 ## What you can do
 
-- **Studio** lets you run code, scrub backward or forward, and pause at breakpoints. Use **Structure Canvas** to watch arrays, maps, trees, and other detected structures as they change. **Stack & Heap** and **Inspect** show stack frames, objects, pointers, or collections when the runtime captures them.
+- **Studio** lets you run code, scrub backward or forward, and pause at breakpoints. The **Structure Canvas** automatically draws strings, variables, collections, and detected structures. Use **Configure visualizer** to choose a representation or bind an algorithm to specific variables. **Stack & Heap** and **Inspect** show stack frames, objects, pointers, or collections when the runtime captures them.
 - **Learn** offers guided data structures and algorithms exercises with runnable examples. Open it from the app navigation.
 - **Challenges** runs public sample checks and can request server-side verification when an evaluation server is available. Open it from the app navigation.
-- **Settings** lets you configure editor and playback defaults and export local preferences, saved work, and learning progress.
+- **Settings → Workspace tools** lets you add Stack & Heap, Complexity, Console, and other tools to the default code-and-canvas view. Settings also lets you configure editor and playback defaults and export local preferences, saved work, and learning progress.
 
 [Explore the feature map](docs/product/FEATURES.md).
 
